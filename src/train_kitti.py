@@ -17,7 +17,7 @@ model = keras.Sequential([
     keras.layers.MaxPooling2D((2, 2)),
     keras.layers.Flatten(),
     keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(4)  # Output layer for bounding box coordinates
+    keras.layers.Dense(40)  # Output layer for bounding box coordinates (10 bounding boxes * 4 coordinates each)
 ])
 
 # Preprocess the dataset for training
@@ -29,6 +29,7 @@ def preprocess(data):
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
     bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
     bbox = convert_bboxes_to_fixed_size_tensor(bbox)  # Convert to fixed size tensor
+    bbox = tf.reshape(bbox, [-1])  # Flatten the bounding boxes to match the model output shape
     print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}")  # Debugging statement
     return image, bbox
 
