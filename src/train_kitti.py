@@ -24,6 +24,7 @@ def preprocess(data):
     image = data['image']
     bbox = data['objects']['bbox']
     image = tf.image.resize(image, (128, 128))
+    bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
     return image, bbox
 
 train_dataset = dataset.map(preprocess).batch(32)
