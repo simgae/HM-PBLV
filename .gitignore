@@ -54,3 +54,7 @@ logs/
 # Secrets
 .env
 *.pem
+
+# Python
+.venv/
+.python-version
