@@ -17,8 +17,7 @@ model = keras.Sequential([
     keras.layers.MaxPooling2D((2, 2)),
     keras.layers.Flatten(),
     keras.layers.Dense(128, activation='relu'),
-    keras.layers.Dense(40), # 10 boxes x 4 coords 
-    keras.layers.Reshape((10, 4))
+    keras.layers.Dense(40)  # Output layer for bounding box coordinates (10 bounding boxes * 4 coordinates each)
 ])
 
 # Preprocess the dataset for training
@@ -30,13 +29,26 @@ def preprocess(data):
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
     bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
     bbox = convert_bboxes_to_fixed_size_tensor(bbox)  # Convert to fixed size tensor
+    bbox = tf.reshape(bbox, [-1])  # Flatten the bounding boxes to match the model output shape
     print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}")  # Debugging statement
     return image, bbox
 
-train_dataset = dataset.map(preprocess).batch(32)
+# Split the dataset into training, validation, and test sets
+train_dataset = dataset.take(int(0.8 * len(dataset)))
+val_dataset = dataset.skip(int(0.8 * len(dataset))).take(int(0.1 * len(dataset)))
+test_dataset = dataset.skip(int(0.9 * len(dataset)))
+
+# Preprocess the validation and test datasets
+train_dataset = train_dataset.map(preprocess).batch(32)
+val_dataset = val_dataset.map(preprocess).batch(32)
+test_dataset = test_dataset.map(preprocess).batch(32)
 
 # Compile the model
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the neural network model using the preprocessed dataset
-model.fit(train_dataset, epochs=10)
+model.fit(train_dataset, epochs=10, validation_data=val_dataset)
+
+# Evaluate the model's performance on the test dataset
+test_loss = model.evaluate(test_dataset)
+print(f"Test Loss: {test_loss}")
