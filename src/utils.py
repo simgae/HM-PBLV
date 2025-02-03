@@ -1,16 +1,31 @@
 import tensorflow as tf
 
-def handle_shape_mismatch(tensor, batch_size):
+def handle_shape_mismatch(bboxes, max_bboxes=10):
     """
-    Handle shape mismatch errors by reshaping the tensor to match the required shape.
-    
-    Args:
-        tensor (tf.Tensor): The input tensor with shape mismatch.
-        batch_size (int): The required batch size.
-        
-    Returns:
-        tf.Tensor: The reshaped tensor with the correct shape.
+    Handle variable numbers of bounding boxes by padding or truncating to a fixed size.
     """
-    # Reshape the tensor to match the required shape
-    reshaped_tensor = tf.reshape(tensor, [batch_size, -1, 4])
-    return reshaped_tensor
+    bboxes = bboxes[:max_bboxes]  # Truncate to max_bboxes
+    padding = [[0, max_bboxes - tf.shape(bboxes)[0]], [0, 0]]  # Padding for bboxes
+    bboxes = tf.pad(bboxes, padding)
+    return bboxes
+
+def normalize_bboxes(bboxes, image_shape):
+    """
+    Normalize bounding box coordinates to be between 0 and 1.
+    """
+    height, width = image_shape[0], image_shape[1]
+    bboxes = tf.cast(bboxes, tf.float32)
+    bboxes = tf.stack([
+        bboxes[:, 0] / height,
+        bboxes[:, 1] / width,
+        bboxes[:, 2] / height,
+        bboxes[:, 3] / width
+    ], axis=-1)
+    return bboxes
+
+def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
+    """
+    Convert bounding boxes to a fixed size tensor.
+    """
+    bboxes = handle_shape_mismatch(bboxes, max_bboxes)
+    return bboxes
