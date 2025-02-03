@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from tensorflow import keras
+from src.utils import handle_shape_mismatch
 
 # Load the KITTI dataset
 dataset, info = tfds.load('kitti', split='train', with_info=True)
@@ -33,4 +34,9 @@ train_dataset = dataset.map(preprocess).batch(32)
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # Train the neural network model using the preprocessed dataset
-model.fit(train_dataset, epochs=10)
+try:
+    model.fit(train_dataset, epochs=10)
+except tf.errors.InvalidArgumentError as e:
+    if 'Shapes' in str(e):
+        train_dataset = train_dataset.map(lambda x, y: (x, handle_shape_mismatch(y, 32)))
+        model.fit(train_dataset, epochs=10)
