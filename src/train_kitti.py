@@ -1,14 +1,14 @@
 import tensorflow as tf
 import tensorflow_datasets as tfds
 from tensorflow import keras
-import cv2
 
 # Load the KITTI dataset
 dataset, info = tfds.load('kitti', split='train', with_info=True)
 
 # Define a neural network model for 2D object detection
 model = keras.Sequential([
-    keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=(None, None, 3)),
+    keras.layers.Input(shape=(128, 128, 3)),
+    keras.layers.Conv2D(32, (3, 3), activation='relu'),
     keras.layers.MaxPooling2D((2, 2)),
     keras.layers.Conv2D(64, (3, 3), activation='relu'),
     keras.layers.MaxPooling2D((2, 2)),
