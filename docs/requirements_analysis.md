@@ -18,6 +18,7 @@ Erkennung erfolgt in zwei Dimensionen (2D) mit Bounding Boxes. Das Modell soll a
 
 - Entwicklung von zwei eigenen neuronalen Netzes mit **TensorFlow**.
 - Training des **2D-Modells** zur Objekterkennung mittels Bounding Boxes.
+- Zusätzlich soll das Modell eine Klassifikation und Multi-Objekt-Erkennung ermöglichen.
 - Optional ist die Erweiterung des Modells um **3D-Tiefenschätzung** durch zusätzliche Netzwerkschichten oder ein
   separates Modell.
 - Verwendung einer geeigneten **Loss-Funktion** für Objekterkennung.
