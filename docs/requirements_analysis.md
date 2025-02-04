@@ -1,6 +1,6 @@
 # **Anforderungsanalyse: Objekterkennung von Fahrzeugen in Bildern**
-_Gruppe 1: Dino Dervisevic, Leon Bender, Frederic Kayser, Isabella Schmid, Simon Gaertner_
 
+_Gruppe 1: Dino Dervisevic, Leon Bender, Frederic Kayser, Isabella Schmid, Simon Gaertner_
 
 ## **1. Projektbeschreibung**
 
@@ -26,7 +26,8 @@ Erkennung erfolgt in zwei Dimensionen (2D) mit Bounding Boxes. Das Modell soll a
 ### **2.3. Modellbewertung**
 
 - Verwendung geeigneter Metriken wie **IoU (Intersection over Union)** für 2D.
-- Erstellung von **Visualisierungen** zur Evaluation der Modellleistung.
+- Erstellung von **Visualisierungen** zur Evaluation der Modellleistung. Beispiele: Visualisierung der
+  Loss-Kurven, IoU-Verteilung und Confusion Matrix
 
 ### **2.4. Implementierung und Laufzeitumgebung**
 
