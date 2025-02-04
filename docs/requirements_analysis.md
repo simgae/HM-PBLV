@@ -1,4 +1,6 @@
 # **Anforderungsanalyse: Objekterkennung von Fahrzeugen in Bildern**
+_Gruppe 1: Dino Dervisevic, Leon Bender, Frederic Kayser, Isabella Schmid, Simon Gaertner_
+
 
 ## **1. Projektbeschreibung**
 
