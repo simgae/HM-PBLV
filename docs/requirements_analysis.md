@@ -18,7 +18,7 @@ Erkennung erfolgt in zwei Dimensionen (2D) mit Bounding Boxes. Das Modell soll a
 - Training des **2D-Modells** zur Objekterkennung mittels Bounding Boxes.
 - Optional ist die Erweiterung des Modells um **3D-Tiefenschätzung** durch zusätzliche Netzwerkschichten oder ein
   separates Modell.
-- Implementierung einer geeigneten **Loss-Funktion** für Objekterkennung.
+- Verwendung einer geeigneten **Loss-Funktion** für Objekterkennung.
 - **Ensemble Training**: Kombination mehrerer Modelle zur Verbesserung der Erkennungsgenauigkeit und Robustheit.
 
 ### **2.3. Modellbewertung**
