@@ -28,31 +28,32 @@ Erkennung erfolgt in zwei Dimensionen (2D) mit Bounding Boxes. Das Modell soll a
 
 ### **2.4. Implementierung und Laufzeitumgebung**
 
-- Verwendung von **Python** mit TensorFlow als Haupt-Framework.
+- Verwendung von **Python** mit TensorFlow als Framework.
 - Bereitstellung einer **REST-API** für die Anwendung des Modells auf neue Bilder und das Anstoßen von
   Trainingsläufen.
+- Verwendung von FastAPI als Framework für die REST-API.
 - Speicherung von Modellen zur **Wiederverwendung** und **Weiterentwicklung**.
 
 ## **3. Nicht-funktionale Anforderungen**
 
-- **Performance:** Modell soll eine performante Verarbeitung ermöglichen.
-- **Skalierbarkeit:** Möglichkeit zur Erweiterung auf größere Datensätze oder komplexere Modelle.
-- **Modularität:** Trennung von Datenverarbeitung, Modelltraining und Evaluierung für einfache Wartung und Erweiterung.
-- **Kompatibilität:** Anwendung soll zusätzlich auf einem Linux System lauffähig sein.
+- **Performance**: Modell soll eine performante Verarbeitung ermöglichen.
+- **Skalierbarkeit**: Möglichkeit zur Erweiterung auf größere Datensätze oder komplexere Modelle.
+- **Modularität**: Trennung von Datenverarbeitung, Modelltraining und Evaluierung für einfache Wartung und Erweiterung.
+- **Kompatibilität**: Anwendung soll auf einem Linux System lauffähig sein.
 
 ## **4. Herausforderungen und Risiken**
 
-- **Datenqualität:** KITTI enthält unterschiedliche Lichtverhältnisse und Wetterbedingungen, die die Modellgenauigkeit
+- **Datenqualität**: KITTI enthält unterschiedliche Lichtverhältnisse und Wetterbedingungen, die die Modellgenauigkeit
   beeinflussen können.
-- Optionale **3D-Tiefenschätzung:** Erfordert eine geeignete Architektur
-- **Rechenaufwand:** Training eines vollständig neuen Modells ist rechenintensiv
-- **Ensemble Training:** Erfordert zusätzliche Rechenressourcen und eine geeignete Methode zur Kombination der Modelle.
+- Optionale **3D-Tiefenschätzung**: Erfordert eine geeignete Architektur
+- **Rechenaufwand**: Training eines vollständig neuen Modells ist rechenintensiv
+- **Ensemble Training**: Erfordert zusätzliche Rechenressourcen und eine geeignete Methode zur Kombination der Modelle.
 
 ## **5. Daraus resultierende Aufgaben**
 
-- **Datenbeschaffung:** Herunterladen und Vorverarbeiten des KITTI-Datasets.
-- **Modellentwicklung:** Implementierung und Training der Modelle.
-- **Ensemble Training:** Zusammenführung und Training mehrerer Modelle.
-- **Evaluation:** Bewertung der Modellleistung und Anpassung der Architektur.
-- **Implementierung:** Erstellung der REST-API und Speicherung von Modellen.
-- **Dokumentation:** Erstellung von Jupyter Notebooks und Readme-Dateien.
+- **Datenbeschaffung**: Herunterladen und Vorverarbeiten des KITTI-Datasets.
+- **Modellentwicklung**: Implementierung und Training der Modelle.
+- **Ensemble Training**: Zusammenführung und Training mehrerer Modelle.
+- **Evaluation**: Bewertung der Modellleistung und Anpassung der Architektur.
+- **Implementierung**: Erstellung der REST-API und Speicherung von Modellen.
+- **Dokumentation**: Verwendung von Markdown als Dokumentationsformat.
