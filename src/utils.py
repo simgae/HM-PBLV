@@ -29,3 +29,24 @@ def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
     """
     bboxes = handle_shape_mismatch(bboxes, max_bboxes)
     return bboxes
+
+def preprocess_dataset(data):
+    """
+    Preprocess the input data by resizing the image and normalizing the bounding boxes.
+
+    Args:
+        data (dict): A dictionary containing the image and bounding box data.
+
+    Returns:
+        tuple: A tuple containing the preprocessed image and bounding boxes.
+    """
+    image = data['image']
+    bbox = data['objects']['bbox']
+    image = tf.image.resize(image, (128, 128))
+    bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
+    bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
+    bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
+    bbox = convert_bboxes_to_fixed_size_tensor(bbox)  # Convert to fixed size tensor
+    bbox = tf.reshape(bbox, [-1])  # Flatten the bounding boxes to match the model output shape
+    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}")  # Debugging statement
+    return image, bbox
