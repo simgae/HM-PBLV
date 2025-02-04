@@ -32,9 +32,6 @@ class YoloModel:
         Initializes the YOLO model by loading the dataset, defining the model architecture,
         and splitting the dataset into training, validation, and test sets.
         """
-        # Load the KITTI dataset
-        self.dataset, self.info = tfds.load('kitti', split='train', with_info=True)
-
         self.model = keras.Sequential([
             keras.layers.Input(shape=(128, 128, 3)),
             # Backbone: CSPDarknet53
@@ -63,10 +60,10 @@ class YoloModel:
             keras.layers.Dense(40)  # Output layer for bounding box coordinates (10 bounding boxes * 4 coordinates each)
         ])
 
-        # Split the dataset into training, validation, and test sets
-        self.train_dataset = self.dataset.take(int(0.8 * len(self.dataset)))
-        self.val_dataset = self.dataset.skip(int(0.8 * len(self.dataset))).take(int(0.1 * len(self.dataset)))
-        self.test_dataset = self.dataset.skip(int(0.9 * len(self.dataset)))
+        # Load the KITTI dataset
+        self.train_dataset = tfds.load('kitti', split='train')
+        self.val_dataset = tfds.load('kitti', split='validation')
+        self.test_dataset = tfds.load('kitti', split='test')
 
         # Preprocess the validation and test datasets
         self.train_dataset = self.train_dataset.map(preprocess_dataset).batch(32)
