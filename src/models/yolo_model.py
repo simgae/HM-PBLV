@@ -52,7 +52,7 @@ class YoloModel:
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
             keras.layers.Conv2D(1024, (3, 3), padding='same', activation='relu'),
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
-            keras.layers.Conv2D((8 + 5) * 3, (1, 1), padding='same', activation='sigmoid'),
+            keras.layers.Conv2D(39, (1, 1), padding='same', activation='sigmoid'),
 
             keras.layers.MaxPooling2D((2, 2)),
             keras.layers.Flatten(),
@@ -73,15 +73,20 @@ class YoloModel:
         # Compile the model
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
-    def train_model(self):
+    def train_model(self, epochs=2):
         """
         Trains the YOLO model using the preprocessed training dataset and validates it using the validation dataset.
+
+        Parameters
+        ----------
+        epochs : int
+            the number of epochs to train the model for
         """
         # Train the neural network model using the preprocessed dataset
         log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-        self.model.fit(self.train_dataset, epochs=2, validation_data=self.val_dataset, callbacks=[tensorboard_callback])
+        self.model.fit(self.train_dataset, epochs=epochs, validation_data=self.val_dataset, callbacks=[tensorboard_callback])
         self._save_model()
 
     def evaluate_model(self):
