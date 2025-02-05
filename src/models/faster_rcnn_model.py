@@ -9,26 +9,38 @@ from tensorflow.keras.callbacks import TensorBoard
 
 def preprocess_dataset(example):
     """
-    Preprocess 'example' from the KITTI dataset and return (image, (class_label, bbox_label)).
+    Preprocess an example from the KITTI dataset.
 
-    For demonstration:
-    - We create a dummy 'class_label' (binary: 0) and 'bbox_label' (4 zeros).
-    - Real code should extract actual labels from 'example'.
+    Parameters:
+    -----------
+    example : dict
+        A dictionary representing a single example from the KITTI dataset. It must include at least the 'image' key.
+
+    Returns:
+    --------
+    tuple:
+        A tuple (image, (class_label, bbox_label)) where:
+          - image: The preprocessed image (resized to 128x128 and normalized).
+          - class_label: A dummy one-hot vector for classification (10 classes; here, background is represented by index 0).
+          - bbox_label: A dummy bounding box regression target for 10 bounding boxes (each with 4 coordinates, flattened to 40 values).
+    
+    For demonstration, we create dummy labels:
+      - class_label: one-hot encoding for class 0 among 10 classes.
+      - bbox_label: 10 bounding boxes, each with coordinates [0.0, 0.0, 0.1, 0.1].
+    In real code, extract the actual labels from 'example'.
     """
-    # Load image
+    # Load and preprocess the image
     image = example['image']
-    # Resize and normalize
     image = tf.image.resize(image, (128, 128))
     image = image / 255.0
 
-    # Dummy classification label (0 or 1). Here just 0:
-    class_label = tf.constant(0.0, dtype=tf.float32)
-    # Dummy bounding box label (4 coords: [x1, y1, x2, y2]):
-    bbox_label = tf.constant([0.0, 0.0, 0.1, 0.1], dtype=tf.float32)
+    # Dummy classification label: one-hot vector of length 10 (index 0 set to 1)
+    class_label = tf.one_hot(0, depth=10, dtype=tf.float32)
+    
+    # Dummy bounding box label for 10 bounding boxes (flattened to 40 values)
+    bbox_label = tf.constant([0.0, 0.0, 0.1, 0.1] * 10, dtype=tf.float32)
 
-    # Return the image, plus a tuple with both labels
     return image, (class_label, bbox_label)
-
 
 
 class ProgressCallback(tf.keras.callbacks.Callback):
@@ -47,25 +59,34 @@ class ProgressCallback(tf.keras.callbacks.Callback):
 
 class FasterRCNNModel:
     """
-    Minimal demonstration of a Faster R-CNN–style model with two heads:
-      - A classification (rpn_cls) output
-      - A bounding box regression (rpn_reg) output
+    A minimal demonstration of a Faster R-CNN–style model with two output heads:
+      - rpn_cls: Classification head for predicting classes for 10 objects using softmax.
+      - rpn_reg: Bounding box regression head for predicting 10 bounding boxes (each with 4 coordinates, total 40 values).
 
-    We supply matching label tuples (class_label, bbox_label) to avoid structure mismatch.
+    Public Attributes:
+    ------------------
+      train_dataset : tf.data.Dataset
+          Preprocessed and batched training dataset.
+      val_dataset : tf.data.Dataset
+          Preprocessed and batched validation dataset.
+      test_dataset : tf.data.Dataset
+          Preprocessed and batched test dataset.
+      model : tf.keras.Model
+          The compiled Keras model with a ResNet50 backbone.
     """
 
     def __init__(self):
-        # 1) Load the KITTI dataset via TFDS
+        # Load the KITTI dataset via TFDS
         self.train_dataset = tfds.load('kitti', split='train')
         self.val_dataset   = tfds.load('kitti', split='validation')
         self.test_dataset  = tfds.load('kitti', split='test')
 
-        # 2) Preprocess & batch
+        # Preprocess & batch the datasets
         self.train_dataset = self.train_dataset.map(preprocess_dataset).batch(32)
         self.val_dataset   = self.val_dataset.map(preprocess_dataset).batch(32)
         self.test_dataset  = self.test_dataset.map(preprocess_dataset).batch(32)
 
-        # 3) Build a simple backbone with ResNet50 (frozen)
+        # Build a simple backbone with ResNet50 (frozen)
         base_model = ResNet50(
             weights='imagenet',
             include_top=False,
@@ -73,18 +94,19 @@ class FasterRCNNModel:
         )
         base_model.trainable = False
 
-        # 4) Add flatten and two outputs:
+        # Add flatten and two output heads
         x = base_model.output
         x = Flatten()(x)
 
-        # Output 1: classification (binary, i.e. 1 neuron with sigmoid)
-        rpn_cls = Dense(1, activation='sigmoid', name='rpn_cls')(x)
-        # Output 2: bounding box coords (4 floats)
-        rpn_bbox = Dense(4, activation='linear', name='rpn_reg')(x)
+        # Output 1: classification head for 10 objects using softmax activation.
+        # This yields a probability distribution over 10 classes (one per object).
+        rpn_cls = Dense(10, activation='softmax', name='rpn_cls')(x)
 
-        # 5) Create and compile the model
+        # Output 2: bounding box regression head for 10 bounding boxes (each with 4 coordinates, total 40 values).
+        rpn_bbox = Dense(40, activation='linear', name='rpn_reg')(x)
+
+        # Create and compile the model with two outputs and corresponding losses.
         self.model = Model(inputs=base_model.input, outputs=[rpn_cls, rpn_bbox])
-        # We have 2 outputs => supply 2 losses in the same order
         self.model.compile(
             optimizer='adam',
             loss=['binary_crossentropy', 'mean_squared_error']
@@ -93,6 +115,11 @@ class FasterRCNNModel:
     def train_model(self, epochs=2):
         """
         Train the model for a given number of epochs.
+
+        Parameters:
+        -----------
+        epochs : int
+            The number of epochs to train the model.
         """
         log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
