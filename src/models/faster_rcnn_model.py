@@ -21,23 +21,19 @@ def preprocess_dataset(example):
     tuple:
         A tuple (image, (class_label, bbox_label)) where:
           - image: The preprocessed image (resized to 128x128 and normalized).
-          - class_label: A dummy one-hot vector for classification (10 classes; here, background is represented by index 0).
+          - class_label: A dummy one-hot vector for classification (50 values: 10 objects x 5 classes).
           - bbox_label: A dummy bounding box regression target for 10 bounding boxes (each with 4 coordinates, flattened to 40 values).
-    
-    For demonstration, we create dummy labels:
-      - class_label: one-hot encoding for class 0 among 10 classes.
-      - bbox_label: 10 bounding boxes, each with coordinates [0.0, 0.0, 0.1, 0.1].
-    In real code, extract the actual labels from 'example'.
     """
     # Load and preprocess the image
     image = example['image']
     image = tf.image.resize(image, (128, 128))
     image = image / 255.0
 
-    # Dummy classification label: one-hot vector of length 10 (index 0 set to 1)
-    class_label = tf.one_hot(0, depth=10, dtype=tf.float32)
+    # Dummy classification label: 50 values (10 objects × 5 classes)
+    # Each object gets a one-hot vector of length 5, concatenated together
+    class_label = tf.concat([tf.one_hot(0, depth=5, dtype=tf.float32) for _ in range(10)], axis=0)
     
-    # Dummy bounding box label for 10 bounding boxes (flattened to 40 values)
+    # Dummy bounding box label remains the same
     bbox_label = tf.constant([0.0, 0.0, 0.1, 0.1] * 10, dtype=tf.float32)
 
     return image, (class_label, bbox_label)
@@ -98,18 +94,21 @@ class FasterRCNNModel:
         x = base_model.output
         x = Flatten()(x)
 
-        # Output 1: classification head for 10 objects using softmax activation.
-        # This yields a probability distribution over 10 classes (one per object).
-        rpn_cls = Dense(10, activation='softmax', name='rpn_cls')(x)
+        # Output 1: classification head for 10 objects × 5 classes = 50 outputs using softmax activation
+        # Reshape to (10, 5) before applying softmax to get probability distribution for each object
+        rpn_cls = Dense(50, activation=None, name='rpn_cls_dense')(x)
+        rpn_cls = tf.reshape(rpn_cls, (-1, 10, 5))
+        rpn_cls = tf.nn.softmax(rpn_cls, axis=-1)
+        rpn_cls = tf.reshape(rpn_cls, (-1, 50), name='rpn_cls')
 
         # Output 2: bounding box regression head for 10 bounding boxes (each with 4 coordinates, total 40 values).
         rpn_bbox = Dense(40, activation='linear', name='rpn_reg')(x)
 
-        # Create and compile the model with two outputs and corresponding losses.
+        # Create and compile the model
         self.model = Model(inputs=base_model.input, outputs=[rpn_cls, rpn_bbox])
         self.model.compile(
             optimizer='adam',
-            loss=['binary_crossentropy', 'mean_squared_error']
+            loss=['categorical_crossentropy', 'mean_squared_error']
         )
 
     def train_model(self, epochs=2):
