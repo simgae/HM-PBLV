@@ -1,15 +1,15 @@
 import datetime
 
 import tensorflow_datasets as tfds
+from keras.src.losses import MeanSquaredError, CategoricalCrossentropy
 from tensorflow import keras
 from tensorflow.keras.callbacks import TensorBoard
 
 from src.utils import preprocess_dataset
 
-
 class YoloModel:
     """
-    A class used to represent a YOLO model for object detection.
+    A class used to represent a YOLO model for object detection and classification.
 
     Attributes
     ----------
@@ -52,12 +52,11 @@ class YoloModel:
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
             keras.layers.Conv2D(1024, (3, 3), padding='same', activation='relu'),
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
-            keras.layers.Conv2D(39, (1, 1), padding='same', activation='sigmoid'),
-
+            keras.layers.Conv2D(43, (1, 1), padding='same', activation='sigmoid'),  # Output layer with 43 units
             keras.layers.MaxPooling2D((2, 2)),
             keras.layers.Flatten(),
             keras.layers.Dense(128, activation='relu'),
-            keras.layers.Dense(40)  # Output layer for bounding box coordinates (10 bounding boxes * 4 coordinates each)
+            keras.layers.Dense(43)  # Output layer for bounding box coordinates and class probabilities
         ])
 
         # Load the KITTI dataset
@@ -71,7 +70,7 @@ class YoloModel:
         self.test_dataset = self.test_dataset.map(preprocess_dataset).batch(32)
 
         # Compile the model
-        self.model.compile(optimizer='adam', loss='mean_squared_error')
+        self.model.compile(optimizer='adam', loss=[MeanSquaredError(), CategoricalCrossentropy()])
 
     def train_model(self, epochs=2):
         """
@@ -86,7 +85,8 @@ class YoloModel:
         log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-        self.model.fit(self.train_dataset, epochs=epochs, validation_data=self.val_dataset, callbacks=[tensorboard_callback])
+        self.model.fit(self.train_dataset, epochs=epochs, validation_data=self.val_dataset,
+                       callbacks=[tensorboard_callback])
         self._save_model()
 
     def evaluate_model(self):
