@@ -1,13 +1,16 @@
 import datetime
 
+import tensorflow as tf
 import tensorflow_datasets as tfds
-from keras.src.losses import MeanSquaredError, CategoricalCrossentropy
+from tensorflow.keras.losses import MeanSquaredError, CategoricalCrossentropy
+from tensorflow.keras.utils import register_keras_serializable
 from tensorflow import keras
 from tensorflow.keras.callbacks import TensorBoard
 
-from src.utils import preprocess_dataset
+from src.utils import preprocess_dataset, postprocess_predictions
 
 
+@register_keras_serializable()
 def yolo_loss(y_true, y_pred):
     """
     Computes the YOLO loss, which is a combination of mean squared error for bounding box coordinates
@@ -43,7 +46,6 @@ def yolo_loss(y_true, y_pred):
     # Combine the two losses
     total_loss = box_loss + class_loss
     return total_loss
-
 
 class YoloModel:
     """
@@ -90,13 +92,12 @@ class YoloModel:
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
             keras.layers.Conv2D(1024, (3, 3), padding='same', activation='relu'),
             keras.layers.Conv2D(512, (1, 1), padding='same', activation='relu'),
-            keras.layers.Conv2D(43, (1, 1), padding='same', activation='sigmoid'),  # Output layer with 43 units
+            keras.layers.Conv2D(50, (1, 1), padding='same', activation='sigmoid'),
             keras.layers.MaxPooling2D((2, 2)),
             keras.layers.Flatten(),
             keras.layers.Dense(128, activation='relu'),
-            keras.layers.Dense(43)  # Output layer for bounding box coordinates and class probabilities
+            keras.layers.Dense(50)  # Output layer for bounding box coordinates and class probabilities (40 + 10)
         ])
-
         # Load the KITTI dataset
         self.train_dataset = tfds.load('kitti', split='train')
         self.val_dataset = tfds.load('kitti', split='validation')
@@ -138,3 +139,25 @@ class YoloModel:
         Saves the trained YOLO model to a file.
         """
         self.model.save('yolo_model.keras')
+
+    def _evaluate_image(self, path_to_image: str):
+        """
+        Evaluates the YOLO model's performance on a single image.
+
+        Parameters
+        ----------
+        path_to_image : str
+            the path to the image file
+        """
+        self.model = keras.models.load_model('yolo_model.keras')
+        image = tf.io.read_file(path_to_image)
+        image = tf.image.decode_image(image, channels=3)
+        image = tf.image.resize(image, (128, 128))
+        image = tf.expand_dims(image, axis=0)
+
+        predictions = self.model.predict(image)
+
+        predictions = postprocess_predictions(predictions[0], image.shape)
+        print(predictions)
+
+

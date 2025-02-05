@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import tensorflow_datasets as tfds
 
 def handle_shape_mismatch(bboxes, max_bboxes=10):
     """
@@ -24,7 +24,6 @@ def normalize_bboxes(bboxes, image_shape):
         bboxes[:, 3] / width
     ], axis=-1)
     return bboxes
-
 
 def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
     """
@@ -51,12 +50,62 @@ def preprocess_dataset(data):
     image = tf.image.resize(image, (128, 128))  # Resize image to 128x128
     bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
-    bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
+
+    # Normalization not necessary for kitti dataset - already normalized
+    # bbox = normalize_bboxes(bbox, image.shape)
+
     bbox = convert_bboxes_to_fixed_size_tensor(bbox)  # Convert to fixed size tensor
     bbox = tf.reshape(bbox, [-1])  # Flatten the bounding boxes to match the model output shape
 
-    class_labels = tf.one_hot(class_labels, depth=3)  # Convert class labels to one-hot encoding
-    class_labels = tf.reduce_sum(class_labels, axis=0)  # Sum one-hot vectors to handle multiple objects
+    # Ensure the class labels are also in the correct shape
+    # Add +1 to differentiate between 0 classification and padding
+    class_labels = tf.reshape(class_labels+1, [-1])
+    padding = tf.maximum(0, 10 - tf.shape(class_labels)[0])  # Ensure padding is non-negative
+    class_labels = tf.pad(class_labels, [[0, padding]], constant_values=0)  # Pad class labels to fixed size
+    class_labels = class_labels[:10]  # Ensure class labels have exactly 10 elements
 
-    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}, Class labels shape: {class_labels.shape}")
-    return image, tf.concat([bbox, class_labels], axis=0)  # Concatenate bbox and class labels
+    return image, tf.concat([bbox, tf.cast(class_labels, tf.float32)], axis=0)  # Concatenate bbox and class labels
+
+
+def postprocess_predictions(predictions, image_shape):
+    """
+    Postprocess the model predictions by extracting bounding boxes and class probabilities,
+    and converting them back to their original scale.
+
+    Args:
+        predictions (tensor): The model predictions containing bounding boxes and class probabilities.
+        image_shape (tuple): The original shape of the image.
+
+    Returns:
+        tuple: A tuple containing the bounding boxes and class probabilities.
+    """
+    bbox = predictions[:40]  # Extract bounding boxes
+    class_probs = predictions[40:]  # Extract class probabilities
+
+    # Reshape bounding boxes to original format
+    bbox = tf.reshape(bbox, [-1, 4])
+    height, width = image_shape[0], image_shape[1]
+
+    # Convert bounding boxes back to original scale
+    bbox = tf.stack([
+        bbox[:, 0] * height,
+        bbox[:, 1] * width,
+        bbox[:, 2] * height,
+        bbox[:, 3] * width
+    ], axis=-1)
+
+
+
+    return bbox, class_probs
+
+
+if __name__ == '__main__':
+    train_dataset = tfds.load('kitti', split='train')
+    data = next(iter(train_dataset))
+    image, bbox = preprocess_dataset(data)
+    print(image.shape, bbox.shape)
+
+
+
+
+### Aufbau Bounding Box: [ymin, xmin, ymax, xmax]
