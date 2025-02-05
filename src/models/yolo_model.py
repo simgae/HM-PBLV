@@ -119,7 +119,6 @@ class YoloModel:
         epochs : int
             the number of epochs to train the model for
         """
-        # Train the neural network model using the preprocessed dataset
         log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         tensorboard_callback = TensorBoard(log_dir=log_dir, histogram_freq=1)
 
@@ -131,7 +130,6 @@ class YoloModel:
         """
         Evaluates the YOLO model's performance on the test dataset.
         """
-        # Evaluate the model's performance on the test dataset
         test_loss = self.model.evaluate(self.test_dataset)
         print(f"Test Loss: {test_loss}")
 

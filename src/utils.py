@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+
 def handle_shape_mismatch(bboxes, max_bboxes=10):
     """
     Handle variable numbers of bounding boxes by padding or truncating to a fixed size.
@@ -8,6 +9,7 @@ def handle_shape_mismatch(bboxes, max_bboxes=10):
     padding = [[0, max_bboxes - tf.shape(bboxes)[0]], [0, 0]]  # Padding for bboxes
     bboxes = tf.pad(bboxes, padding)
     return bboxes
+
 
 def normalize_bboxes(bboxes, image_shape):
     """
@@ -23,12 +25,14 @@ def normalize_bboxes(bboxes, image_shape):
     ], axis=-1)
     return bboxes
 
+
 def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
     """
     Convert bounding boxes to a fixed size tensor.
     """
     bboxes = handle_shape_mismatch(bboxes, max_bboxes)
     return bboxes
+
 
 def preprocess_dataset(data):
     """
@@ -42,9 +46,9 @@ def preprocess_dataset(data):
     """
     image = data['image']
     bbox = data['objects']['bbox']
-    class_labels = data['objects']['type']  # Extract class labels
+    class_labels = data['objects']['type']
 
-    image = tf.image.resize(image, (128, 128))
+    image = tf.image.resize(image, (128, 128))  # Resize image to 128x128
     bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
     bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
@@ -54,5 +58,5 @@ def preprocess_dataset(data):
     class_labels = tf.one_hot(class_labels, depth=3)  # Convert class labels to one-hot encoding
     class_labels = tf.reduce_sum(class_labels, axis=0)  # Sum one-hot vectors to handle multiple objects
 
-    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}, Class labels shape: {class_labels.shape}")  # Debugging statement
+    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}, Class labels shape: {class_labels.shape}")
     return image, tf.concat([bbox, class_labels], axis=0)  # Concatenate bbox and class labels
