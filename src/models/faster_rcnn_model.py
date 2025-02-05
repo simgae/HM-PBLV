@@ -144,10 +144,5 @@ class FasterRCNNModel:
         """
         Save the trained model to disk.
         """
-        self.model.save('faster_rcnn_model.keras')
-
-
-if __name__ == '__main__':
-    faster_rcnn_model = FasterRCNNModel()
-    faster_rcnn_model.train_model(epochs=2)
-    faster_rcnn_model.evaluate_model()
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        self.model.save(f'faster_rcnn_model_{timestamp}.keras')
