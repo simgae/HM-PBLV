@@ -58,3 +58,7 @@ logs/
 # Python
 .venv/
 .python-version
+
+# Keras / TensorFlow
+*.h5
+*.keras
