@@ -32,21 +32,27 @@ def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
 
 def preprocess_dataset(data):
     """
-    Preprocess the input data by resizing the image and normalizing the bounding boxes.
+    Preprocess the input data by resizing the image, normalizing the bounding boxes, and extracting class labels.
 
     Args:
-        data (dict): A dictionary containing the image and bounding box data.
+        data (dict): A dictionary containing the image, bounding box data, and class labels.
 
     Returns:
-        tuple: A tuple containing the preprocessed image and bounding boxes.
+        tuple: A tuple containing the preprocessed image, bounding boxes, and class labels.
     """
     image = data['image']
     bbox = data['objects']['bbox']
+    class_labels = data['objects']['type']  # Extract class labels
+
     image = tf.image.resize(image, (128, 128))
     bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
     bbox = normalize_bboxes(bbox, image.shape)  # Normalize bounding box coordinates
     bbox = convert_bboxes_to_fixed_size_tensor(bbox)  # Convert to fixed size tensor
     bbox = tf.reshape(bbox, [-1])  # Flatten the bounding boxes to match the model output shape
-    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}")  # Debugging statement
-    return image, bbox
+
+    class_labels = tf.one_hot(class_labels, depth=3)  # Convert class labels to one-hot encoding
+    class_labels = tf.reduce_sum(class_labels, axis=0)  # Sum one-hot vectors to handle multiple objects
+
+    print(f"Image shape: {image.shape}, BBox shape: {bbox.shape}, Class labels shape: {class_labels.shape}")  # Debugging statement
+    return image, tf.concat([bbox, class_labels], axis=0)  # Concatenate bbox and class labels
