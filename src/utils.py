@@ -47,7 +47,8 @@ def preprocess_dataset(data):
     bbox = data['objects']['bbox']
     class_labels = data['objects']['type']
 
-    image = tf.image.resize(image, (128, 128))  # Resize image to 128x128
+    image = tf.image.resize(image, (416, 416))  # Resize image to 416x416
+    image = tf.cast(image, tf.float32) / 255.0  # Normalize image
     bbox = tf.reshape(bbox, [-1, 4])  # Ensure bbox shape is consistent
     bbox = handle_shape_mismatch(bbox)  # Handle variable number of bounding boxes
 
