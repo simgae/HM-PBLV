@@ -98,6 +98,7 @@ class YoloV3Model:
             keras.layers.Dense(128, activation='relu'),
             keras.layers.Dense(50)  # Output layer for bounding box coordinates and class probabilities (40 + 10)
         ])
+
         # Load the KITTI dataset
         self.train_dataset = tfds.load('kitti', split='train')
         self.val_dataset = tfds.load('kitti', split='validation')
