@@ -11,10 +11,7 @@ from src.utils import preprocess_dataset
 import tensorflow as tf
 
 @register_keras_serializable()
-def yolo_v3_loss(y_true, y_pred, anchors=None, num_classes=3, ignore_thresh=0.5):
-    if anchors is None:
-        anchors = tf.constant([[10, 13], [16, 30], [33, 23]], dtype=tf.float32)
-
+def yolo_v3_loss(y_true, y_pred):
     y_pred = tf.reshape(y_pred, tf.shape(y_true))
 
     # Calculate the class loss
