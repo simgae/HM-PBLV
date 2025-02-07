@@ -8,7 +8,10 @@ def preprocess_dataset(data):
     class_labels = data['objects']['type']
 
     # Resize bounding boxes
-    bbox = tf.reshape(bbox, [-1, 4])
+    if tf.size(bbox) == 0:
+        bbox = tf.zeros([0, 4])
+    else:
+        bbox = tf.reshape(bbox, [-1, 4])
 
     # Denormalize bounding boxes
     image_shape = tf.shape(image)
@@ -55,8 +58,9 @@ def preprocess_dataset(data):
     y_true_small = tf.zeros((batch_size, grid_size_small, grid_size_small, 3, 5 + num_classes))
 
     # Insert bounding boxes into the ground truth tensors
-    y_true_large = tf.tensor_scatter_nd_update(y_true_large, [[0, 6, 6, 0]], bbox)
-    y_true_medium = tf.tensor_scatter_nd_update(y_true_medium, [[0, 13, 13, 0]], bbox)
-    y_true_small = tf.tensor_scatter_nd_update(y_true_small, [[0, 26, 26, 0]], bbox)
+    for i in range(tf.shape(bbox)[0]):
+        y_true_large = tf.tensor_scatter_nd_update(y_true_large, [[0, 6, 6, 0]], [bbox[i]])
+        y_true_medium = tf.tensor_scatter_nd_update(y_true_medium, [[0, 13, 13, 0]], [bbox[i]])
+        y_true_small = tf.tensor_scatter_nd_update(y_true_small, [[0, 26, 26, 0]], [bbox[i]])
 
     return image, (y_true_large, y_true_medium, y_true_small)
