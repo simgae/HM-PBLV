@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow_datasets as tfds
 
 def preprocess_dataset(data):
     # load image, bounding boxes, and class labels from the input data
