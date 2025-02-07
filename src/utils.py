@@ -47,7 +47,7 @@ def preprocess_dataset(data):
 
     # Ground truth tensor Shape = (batch_size, 13, 13, 3, 5 + num_classes)
     # Tensor: (32, 13, 13, 3, bbox)
-    batch_size = 32
+    batch_size = 1
     num_classes = 3
     grid_size_large = 13
     grid_size_medium = 26
