@@ -13,26 +13,27 @@ import tensorflow as tf
 @register_keras_serializable()
 def yolo_v3_loss(y_true, y_pred, anchors=None, num_classes=3, ignore_thresh=0.5):
     if anchors is None:
-        anchors = [(1, 1)] * 13
+        anchors = tf.constant([[10, 13], [16, 30], [33, 23]], dtype=tf.float32)
 
     y_pred = tf.reshape(y_pred, tf.shape(y_true))
-    assert y_true.shape == y_pred.shape
 
-    # Separate out predictions
+    # Calculate the class loss
     pred_class = y_pred[..., 5:]
-
-    # Separate out ground truth
     object_mask = y_true[..., 4:5]
     true_class_probs = y_true[..., 5:]
-
-    # Reshape pred_class to match the shape of true_class_probs
     pred_class = tf.reshape(pred_class, tf.shape(true_class_probs))
-
-    # Calculate class loss
-    object_mask = tf.squeeze(object_mask, -1)  # Remove the last dimension
+    object_mask = tf.squeeze(object_mask, -1)
     class_loss = object_mask * binary_crossentropy(true_class_probs, pred_class)
 
-    return tf.reduce_sum(class_loss)
+    # Calculate the bbox loss
+    pred_box = y_pred[..., 0:4]
+    true_box = y_true[..., 0:4]
+
+    # Calculate the overall loss
+    box_loss = object_mask * tf.reduce_sum(tf.square(true_box - pred_box), axis=-1)
+
+    return tf.reduce_sum(class_loss) + box_loss
+
 
 class YoloV3Model:
     """
