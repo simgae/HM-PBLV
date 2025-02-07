@@ -59,4 +59,4 @@ def preprocess_dataset(data):
     y_true_medium = tf.tensor_scatter_nd_update(y_true_medium, [[0, 13, 13, 0]], bbox)
     y_true_small = tf.tensor_scatter_nd_update(y_true_small, [[0, 26, 26, 0]], bbox)
 
-    return image, [y_true_large, y_true_medium, y_true_small]
+    return image, (y_true_large, y_true_medium, y_true_small)

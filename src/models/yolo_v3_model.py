@@ -2,45 +2,61 @@ import datetime
 
 import tensorflow as tf
 import tensorflow_datasets as tfds
+from keras.src.losses import binary_crossentropy
 from tensorflow.keras.utils import register_keras_serializable
 from tensorflow import keras
 from tensorflow.keras.callbacks import TensorBoard
 
 from src.utils import preprocess_dataset
 
+import tensorflow as tf
 
 def compute_iou(pred_xy, pred_wh, true_xy, true_wh):
     """
-    Compute IOU between predicted boxes and ground-truth boxes for each anchor cell.
+    Compute the Intersection Over Union (IOU) between predicted and true boxes.
 
-    pred_xy: shape [batch, gy, gx, anchors, 2]
-    pred_wh: shape [batch, gy, gx, anchors, 2]
-    true_xy: shape [batch, gy, gx, anchors, 2]
-    true_wh: shape [batch, gy, gx, anchors, 2]
+    Parameters
+    ----------
+    pred_xy : tensor
+        Predicted box center coordinates.
+    pred_wh : tensor
+        Predicted box width and height.
+    true_xy : tensor
+        True box center coordinates.
+    true_wh : tensor
+        True box width and height.
 
-    returns iou_scores: shape [batch, gy, gx, anchors]
+    Returns
+    -------
+    iou_scores : tensor
+        IOU scores for each box.
     """
-    # Convert center+wh to top-left, bottom-right
-    pred_box_min = pred_xy - pred_wh / 2.0
-    pred_box_max = pred_xy + pred_wh / 2.0
-    true_box_min = true_xy - true_wh / 2.0
-    true_box_max = true_xy + true_wh / 2.0
+    # Convert from center coordinates to corner coordinates
+    pred_box = tf.concat([pred_xy - pred_wh / 2.0, pred_xy + pred_wh / 2.0], axis=-1)
+    true_box = tf.concat([true_xy - true_wh / 2.0, true_xy + true_wh / 2.0], axis=-1)
 
-    # Intersection
-    intersect_min = tf.maximum(pred_box_min, true_box_min)
-    intersect_max = tf.minimum(pred_box_max, true_box_max)
-    intersect_wh = tf.maximum(intersect_max - intersect_min, 0.0)
+    # Expand dimensions for broadcasting
+    pred_box = tf.expand_dims(pred_box, -2)
+    true_box = tf.expand_dims(true_box, 0)
+
+    # Calculate intersection areas
+    intersect_mins = tf.maximum(pred_box[..., :2], true_box[..., :2])
+    intersect_maxes = tf.minimum(pred_box[..., 2:], true_box[..., 2:])
+    intersect_wh = tf.maximum(intersect_maxes - intersect_mins, 0.0)
     intersect_area = intersect_wh[..., 0] * intersect_wh[..., 1]
 
-    # Union
+    # Calculate union areas
     pred_area = pred_wh[..., 0] * pred_wh[..., 1]
+    pred_area = tf.expand_dims(pred_area, -1)  # Expand dimensions for broadcasting
     true_area = true_wh[..., 0] * true_wh[..., 1]
     union_area = pred_area + true_area - intersect_area
-    return intersect_area / tf.maximum(union_area, 1e-9)
 
+    # Compute IOU
+    iou_scores = intersect_area / union_area
+    return iou_scores
 
 @register_keras_serializable()
-def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
+def yolo_v3_loss(y_true, y_pred, anchors=None, num_classes=3, ignore_thresh=0.5):
     """
     Closer to the standard YOLOv3 loss, including anchor offsets and confidence mask.
 
@@ -56,6 +72,10 @@ def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
 
     Returns scalar loss tensor.
     """
+
+    if anchors is None:
+        anchors = [(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7), (8, 8), (9, 9), (10, 10), (11, 11), (12, 12), (13, 13)]
+
 
     # Separate out predictions
     pred_xy = y_pred[..., 0:2]  # tx, ty
@@ -74,7 +94,6 @@ def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
     grid_shape_f = tf.cast(grid_shape, tf.float32)
 
     # Compute absolute box coords from network outputs
-    # YOLOv3: b_xy = (sigmoid(tx) + cx) / grid_w, b_wh = anchors * exp(tw) / grid_w
     grid_y = tf.range(0, grid_shape[0], dtype=tf.int32)
     grid_x = tf.range(0, grid_shape[1], dtype=tf.int32)
     grid_x, grid_y = tf.meshgrid(grid_x, grid_y)
@@ -83,6 +102,7 @@ def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
     # Expand/reshape for broadcasting
     grid = tf.expand_dims(grid, 2)  # shape [gy, gx, 1, 2]
     anchors_tf = tf.cast(anchors, tf.float32)  # shape [num_anchors, 2]
+    anchors_tf = tf.reshape(anchors_tf, [1, 1, len(anchors), 2])  # reshape to [1, 1, num_anchors, 2]
 
     pred_xy_sig = tf.sigmoid(pred_xy) + grid  # offset by grid
     pred_xy_sig = pred_xy_sig / grid_shape_f[::-1]  # normalize by input size
@@ -90,7 +110,6 @@ def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
     pred_wh_exp = pred_wh_exp / grid_shape_f[::-1]
 
     # Build iou mask for ignoring predicted boxes that overlap ground truth
-    # with high IOU but shouldn’t contribute to conf loss
     iou_scores = compute_iou(pred_xy_sig, pred_wh_exp, true_xy, true_wh)
     best_ious = tf.reduce_max(iou_scores, axis=-1, keepdims=True)
     ignore_mask = tf.cast(best_ious < ignore_thresh, tf.float32)
@@ -98,22 +117,22 @@ def yolo_v3_loss(y_true, y_pred, anchors, num_classes, ignore_thresh=0.5):
     # Box loss: MSE for center + size, weighted by object mask
     box_loss_scale = 2.0 - (true_wh[..., 0] * true_wh[..., 1])
     xy_loss = object_mask * box_loss_scale * tf.square(true_xy - (tf.sigmoid(pred_xy) + grid) / grid_shape_f[::-1])
+    xy_loss = tf.expand_dims(xy_loss, -1)  # Expand dimensions for broadcasting
     wh_loss = object_mask * box_loss_scale * tf.square(true_wh - tf.exp(pred_wh) * anchors_tf / grid_shape_f[::-1])
+    wh_loss = tf.expand_dims(wh_loss, -1)  # Expand dimensions for broadcasting
     box_loss = tf.reduce_sum(xy_loss + wh_loss)
 
     # Confidence loss: BCE on object_mask, ignoring boxes with big IOU
-    conf_obj_loss = object_mask * tf.keras.losses.binary_crossentropy(object_mask, tf.sigmoid(pred_conf))
-    conf_noobj_loss = (1 - object_mask) * ignore_mask * tf.keras.losses.binary_crossentropy(object_mask,
-                                                                                            tf.sigmoid(pred_conf))
+    conf_obj_loss = object_mask * binary_crossentropy(object_mask, tf.sigmoid(pred_conf))
+    conf_noobj_loss = (1 - object_mask) * ignore_mask * binary_crossentropy(object_mask, tf.sigmoid(pred_conf))
     conf_loss = tf.reduce_sum(conf_obj_loss + conf_noobj_loss)
 
     # Class loss: BCE for class probabilities, multiplied by object mask
-    class_loss = object_mask * tf.keras.losses.binary_crossentropy(true_class_probs, tf.sigmoid(pred_class))
+    class_loss = object_mask * binary_crossentropy(true_class_probs, tf.sigmoid(pred_class))
     class_loss = tf.reduce_sum(class_loss)
 
     total_loss = box_loss + conf_loss + class_loss
     return total_loss
-
 
 class YoloV3Model:
     """
