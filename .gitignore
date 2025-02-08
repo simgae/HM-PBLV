@@ -59,10 +59,6 @@ logs/
 .venv/
 .python-version
 
-# Keras / TensorFlow
-*.h5
-*.keras
-
 # Images
 *.png
 *.jpg
