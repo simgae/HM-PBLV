@@ -62,3 +62,8 @@ logs/
 # Keras / TensorFlow
 *.h5
 *.keras
+
+# Images
+*.png
+*.jpg
+*.jpeg
