@@ -195,13 +195,19 @@ class YoloV3Model:
         image_path : str
             the path to the image
         """
-        image = tf.io.read_file(image_path)
-        image = tf.image.decode_jpeg(image, channels=3)
-        image = tf.image.resize(image, (416, 416))
+        original_image = tf.io.read_file(image_path)
+        original_image = tf.image.decode_jpeg(original_image, channels=3)
+
+        # resize image
+        image = tf.image.resize(original_image, (416, 416))
         image = tf.expand_dims(image, 0)
 
         # predict bbox and class
         predictions = self.model.predict(image)
+
+        # undo resizing
+        image = tf.image.resize(original_image, (original_image.shape[0], original_image.shape[1]))
+        image = tf.expand_dims(image, 0)
 
         # add prediction to image
         bbox = predictions[0][0][..., :4]
@@ -210,10 +216,10 @@ class YoloV3Model:
         # define colors
         colors = tf.constant([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
 
-        # add bbox to image
+        # convert image to float32
         image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
-
+        # reshape bbox tensor
         bbox = tf.reshape(bbox, [-1, 4])  # Flatten the bbox tensor
         bbox = tf.expand_dims(bbox, 0)  # Add batch dimension
 
