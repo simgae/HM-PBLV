@@ -10,6 +10,7 @@ from src.utils import preprocess_dataset
 
 import tensorflow as tf
 
+
 @register_keras_serializable()
 def yolo_v3_loss(y_true, y_pred):
     y_pred = tf.reshape(y_pred, tf.shape(y_true))
@@ -195,6 +196,9 @@ class YoloV3Model:
         image_path : str
             the path to the image
         """
+        # define colors
+        colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1)]
+
         original_image = tf.io.read_file(image_path)
         original_image = tf.image.decode_jpeg(original_image, channels=3)
 
@@ -205,25 +209,16 @@ class YoloV3Model:
         # predict bbox and class
         predictions = self.model.predict(image)
 
-        # undo resizing
-        image = tf.image.resize(original_image, (original_image.shape[0], original_image.shape[1]))
-        image = tf.expand_dims(image, 0)
+        # convert image to float32
+        image = tf.image.convert_image_dtype(original_image, dtype=tf.float32)
 
         # add prediction to image
         bbox = predictions[0][0][..., :4]
-        class_probs = predictions[0][0][..., 5:]
-
-        # define colors
-        colors = tf.constant([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-
-        # convert image to float32
-        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
 
         # reshape bbox tensor
-        bbox = tf.reshape(bbox, [-1, 4])  # Flatten the bbox tensor
-        bbox = tf.expand_dims(bbox, 0)  # Add batch dimension
+        bbox = tf.reshape(bbox, [-1, 4])
 
-        # ensure bbox coordinates are in the correct order
+        # invert bbox
         bbox = tf.stack([
             tf.minimum(bbox[..., 0], bbox[..., 2]),  # y_min
             tf.minimum(bbox[..., 1], bbox[..., 3]),  # x_min
@@ -232,17 +227,18 @@ class YoloV3Model:
         ], axis=-1)
 
         # draw the bounding box on the image
-        image_with_boxes = tf.image.draw_bounding_boxes(
-            image,
-            bbox,
+        image = tf.image.draw_bounding_boxes(
+            tf.expand_dims(image, 0),
+            tf.expand_dims(bbox, 0),
             colors
         )
 
-        # convert image to uint8
-        image_with_boxes = tf.cast(image_with_boxes, tf.uint8)
+        image = tf.squeeze(image, 0)
+
+        encoded_image = tf.image.encode_png(tf.image.convert_image_dtype(image, dtype=tf.uint8))
 
         # save image
-        tf.io.write_file('output.jpg', tf.image.encode_jpeg(tf.squeeze(image_with_boxes, 0)))
+        tf.io.write_file('output.jpg', encoded_image)
 
     def _save_model(self):
         """

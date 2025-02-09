@@ -6,4 +6,4 @@ if __name__ == '__main__':
     yolo_v3_model.load_model()
     #yolo_v3_model.evaluate_model()
 
-    yolo_v3_model.evaluate_image('../data/kitti-test-plain/000005.png')
+    yolo_v3_model.evaluate_image('../data/kitti-test-plain/000087.png')
