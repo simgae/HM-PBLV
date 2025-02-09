@@ -179,6 +179,65 @@ class YoloV3Model:
         test_loss = self.model.evaluate(self.test_dataset)
         print(f"Test Loss: {test_loss}")
 
+    def load_model(self):
+        """
+        Loads a trained YOLO v3 model from a file.
+        """
+        self.model = keras.models.load_model('yolo_v3_model.keras',
+                                             custom_objects={'yolo_v3_loss': yolo_v3_loss})
+
+    def evaluate_image(self, image_path):
+        """
+        Evaluates the YOLO v3 model's performance on a single image.
+
+        Parameters
+        ----------
+        image_path : str
+            the path to the image
+        """
+        image = tf.io.read_file(image_path)
+        image = tf.image.decode_jpeg(image, channels=3)
+        image = tf.image.resize(image, (416, 416))
+        image = tf.expand_dims(image, 0)
+
+        # predict bbox and class
+        predictions = self.model.predict(image)
+
+        # add prediction to image
+        bbox = predictions[0][0][..., :4]
+        class_probs = predictions[0][0][..., 5:]
+
+        # define colors
+        colors = tf.constant([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+
+        # add bbox to image
+        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+
+
+        bbox = tf.reshape(bbox, [-1, 4])  # Flatten the bbox tensor
+        bbox = tf.expand_dims(bbox, 0)  # Add batch dimension
+
+        # ensure bbox coordinates are in the correct order
+        bbox = tf.stack([
+            tf.minimum(bbox[..., 0], bbox[..., 2]),  # y_min
+            tf.minimum(bbox[..., 1], bbox[..., 3]),  # x_min
+            tf.maximum(bbox[..., 0], bbox[..., 2]),  # y_max
+            tf.maximum(bbox[..., 1], bbox[..., 3])  # x_max
+        ], axis=-1)
+
+        # draw the bounding box on the image
+        image_with_boxes = tf.image.draw_bounding_boxes(
+            image,
+            bbox,
+            colors
+        )
+
+        # convert image to uint8
+        image_with_boxes = tf.cast(image_with_boxes, tf.uint8)
+
+        # save image
+        tf.io.write_file('output.jpg', tf.image.encode_jpeg(tf.squeeze(image_with_boxes, 0)))
+
     def _save_model(self):
         """
         Saves the trained YOLO v3 model to a file.
