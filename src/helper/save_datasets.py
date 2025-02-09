@@ -38,6 +38,16 @@ def save_dataset(dataset, path, dataset_type):
 
         image = tensorflow.image.convert_image_dtype(image, dtype=tensorflow.float32)
 
+        # current format of bbox is (ymin, xmin, ymax, xmax)
+        # currently (0,0) is at the bottom-left
+        # set (0,0) to top-left
+        bbox = tensorflow.stack([
+            1 - bbox[:, 2],
+            bbox[:, 1],
+            1 - bbox[:, 0],
+            bbox[:, 3]
+        ], axis=-1)
+
         # draw the bounding box on the image
         image = tensorflow.image.draw_bounding_boxes(
             tensorflow.expand_dims(image, 0),
