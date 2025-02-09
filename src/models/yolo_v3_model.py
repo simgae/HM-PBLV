@@ -184,8 +184,12 @@ class YoloV3Model:
         """
         Loads a trained YOLO v3 model from a file.
         """
-        self.model = keras.models.load_model('yolo_v3_model.keras',
-                                             custom_objects={'yolo_v3_loss': yolo_v3_loss})
+        try:
+            self.model = keras.models.load_model('./src/yolo_v3_model.keras',
+                                                 custom_objects={'yolo_v3_loss': yolo_v3_loss})
+        except ValueError as e:
+            self.model = keras.models.load_model('yolo_v3_model.keras',
+                                                 custom_objects={'yolo_v3_loss': yolo_v3_loss})
 
     def evaluate_image(self, image_path):
         """
