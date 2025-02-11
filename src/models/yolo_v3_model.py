@@ -10,6 +10,41 @@ from src.utils import preprocess_dataset
 
 import tensorflow as tf
 
+def calculate_iou(box1, box2):
+    # Calculate the intersection coordinates
+    x1 = tf.maximum(box1[0], box2[0])
+    y1 = tf.maximum(box1[1], box2[1])
+    x2 = tf.minimum(box1[2], box2[2])
+    y2 = tf.minimum(box1[3], box2[3])
+
+    # Calculate the area of the intersection
+    intersection_area = tf.maximum(0.0, x2 - x1) * tf.maximum(0.0, y2 - y1)
+
+    # Calculate the area of both bounding boxes
+    box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+    box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+
+    # Calculate the union area
+    union_area = box1_area + box2_area - intersection_area
+
+    # Calculate the IoU
+    iou = intersection_area / union_area
+
+    return iou
+
+def filter_boxes(boxes, threshold=0.5):
+    filtered_boxes = []
+    for i in range(len(boxes)):
+        discard = False
+        for j in range(i + 1, len(boxes)):
+            iou = calculate_iou(boxes[i], boxes[j])
+            if iou < threshold:
+                discard = True
+                break
+        if not discard:
+            filtered_boxes.append(boxes[i])
+    return filtered_boxes
+
 
 @register_keras_serializable()
 def yolo_v3_loss(y_true, y_pred):
@@ -29,6 +64,7 @@ def yolo_v3_loss(y_true, y_pred):
 
     # Calculate the overall loss
     box_loss = object_mask * tf.reduce_sum(tf.square(true_box - pred_box), axis=-1)
+    box_loss = box_loss * y_pred[..., 4]
 
     return tf.reduce_sum(class_loss) + box_loss
 
@@ -218,16 +254,26 @@ class YoloV3Model:
 
         # add prediction to image
         bbox = predictions[0][0][..., :4]
+        objectiveness = predictions[0][0][..., 4]
+
+        # get bbox with highest objectiveness
+        bbox = tf.expand_dims(tf.gather(bbox, tf.argmax(objectiveness)), 0)
 
         # reshape bbox tensor
         bbox = tf.reshape(bbox, [-1, 4])
 
-        # invert bbox
+        # filter boxes with iou threshold
+        bbox = filter_boxes(bbox, threshold=0.5)
+
+        # add half of the image width and height to the x and y coordinates
+        # because the bbox coordinates are normalized to the center of the image
+        bbox += tf.constant([0.5, 0.5, 0.5, 0.5])
+
         bbox = tf.stack([
-            tf.minimum(bbox[..., 0], bbox[..., 2]),  # y_min
-            tf.minimum(bbox[..., 1], bbox[..., 3]),  # x_min
-            tf.maximum(bbox[..., 0], bbox[..., 2]),  # y_max
-            tf.maximum(bbox[..., 1], bbox[..., 3])  # x_max
+            tf.minimum(tf.convert_to_tensor(bbox)[:, 0], tf.convert_to_tensor(bbox)[:, 2]),
+            tf.minimum(tf.convert_to_tensor(bbox)[:, 1], tf.convert_to_tensor(bbox)[:, 3]),
+            tf.maximum(tf.convert_to_tensor(bbox)[:, 0], tf.convert_to_tensor(bbox)[:, 2]),
+            tf.maximum(tf.convert_to_tensor(bbox)[:, 1], tf.convert_to_tensor(bbox)[:, 3]),
         ], axis=-1)
 
         # draw the bounding box on the image
