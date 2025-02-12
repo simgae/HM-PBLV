@@ -177,8 +177,6 @@ class YoloV3Model:
 
         self.model = self.build_yolo_v3_model()
 
-        self.model.summary()
-
         # Load the KITTI dataset
         self.train_dataset = tfds.load('kitti', split='train')
         self.val_dataset = tfds.load('kitti', split='validation')
