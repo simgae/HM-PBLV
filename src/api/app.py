@@ -1,18 +1,22 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Form
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 import threading
 import os
+
+# Importiere die YOLO und Faster R-CNN Modelle
 from src.models.yolo_v3_model import YoloV3Model
+from src.models.faster_rcnn_model import FasterRCNNModel
 
 app = FastAPI()
 
-# Create an instance of the YOLO v3 model
+# Create instances of the models
 yolo_model = YoloV3Model()
+pretrained_yolo_model = FasterRCNNModel()
 
-# Global variable to keep track of the training status
-training_in_progress = False
-
+# Global variable to keep track of the training status per model
+training_in_progress = {"yolo": False, "fasterrcnn": False}
 
 class TrainStatus(BaseModel):
     training: bool
@@ -21,44 +25,47 @@ class TrainStatus(BaseModel):
 
 
 @app.post("/start_training/")
-async def start_training(epochs: int = 1):
+async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yolo_v3", enum=["yolo_v3","pretrained_yolo"])):
     """
     Start the training of the YOLO v3 model.
     This will run the training in a separate thread to avoid blocking the API.
     """
     global training_in_progress
 
-    if training_in_progress:
-        raise HTTPException(status_code=400, detail="Training is already in progress.")
+    if training_in_progress[model_type]:
+        raise HTTPException(status_code=400, detail=f"Training for {model_type} is already in progress.")
 
     def train():
         global training_in_progress
         try:
-            training_in_progress = True
-            yolo_model.train_model(epochs)
-            training_in_progress = False
+            training_in_progress[model_type] = True
+            if model_type == "yolo":
+                yolo_model.train_model(epochs)
+            else:
+                pretrained_yolo_model.train_model(epochs)
+            training_in_progress[model_type] = False
         except Exception as e:
-            training_in_progress = False
-            print(f"Error during training: {e}")
+            training_in_progress[model_type] = False
+            print(f"Error during training for {model_type}: {e}")
 
     # Start the training in a new thread so it doesn't block the FastAPI server
     threading.Thread(target=train).start()
-    return {"message": f"Training started for {epochs} epochs."}
+    return {"message": f"Training started for {epochs} epochs for {model_type}."}
 
 
 @app.get("/training_status/")
-async def get_training_status():
+async def get_training_status(model_type: str = Query("yolo_v3", enum=["yolo_v3", "pretrained_yolo"])):
     """
     Get the current status of the training process.
     """
-    if training_in_progress:
-        return {"training": True, "epoch": None, "message": "Training is in progress."}
+    if training_in_progress[model_type]:
+        return {"training": True, "epoch": None, "message": f"Training for {model_type} is in progress."}
     else:
-        return {"training": False, "epoch": None, "message": "Training is not in progress."}
+        return {"training": False, "epoch": None, "message": f"Training for {model_type} is not in progress."}
 
 
 @app.post("/evaluate_image/")
-async def evaluate_image(image: UploadFile = File(...)):
+async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("yolo_v3", enum=["yolo_v3", "pretrained_yolo"])):
     """
     Evaluate a single image using the trained YOLO v3 model.
     """
@@ -67,29 +74,51 @@ async def evaluate_image(image: UploadFile = File(...)):
     with open(image_path, "wb") as f:
         f.write(await image.read())
 
+    if model_type == "yolo":
+        model = yolo_model
+    else:
+        model = pretrained_yolo_model
+
     # Load the trained YOLO v3 model
     try:
-        yolo_model.load_model()
+        model.load_model()
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load model: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to load {model_type} model: {str(e)}")
 
     try:
         # Evaluate the image
-        yolo_model.evaluate_image(image_path)
+        model.evaluate_image(image_path)
 
-        # Return the path to the saved output image
-        output_image_path = "output.jpg"  # Model writes the image here
-        return {"message": "Image evaluated successfully.", "output_image_path": output_image_path}
+        # Save the output image in a specific directory
+        output_image_path = f"output_images/output_{model_type}.jpg"  # Model writes the image here
+        os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
+        # Assuming `yolo_model.evaluate_image` saves the result to output.jpg
+
+        # Return the URL to the saved output image
+        return {
+            "message": "Image evaluated successfully.",
+            "output_image_url": f"/download_output_image/{model_type}"
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to evaluate image: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to evaluate image using {model_type}: {str(e)}")
 
     finally:
         # Clean up the temporary file
         if os.path.exists(image_path):
             os.remove(image_path)
 
+@app.get("/download_output_image/{model_type}")
+async def download_output_image(model_type: str):
+    """
+    Downloads the output image for the specified model.
+    """
+    output_image_path = f"output_images/output_{model_type}.jpg"
+    if os.path.exists(output_image_path):
+        return FileResponse(output_image_path, media_type="image/jpeg", filename=f"output_{model_type}.jpg")
+    else:
+        raise HTTPException(status_code=404, detail=f"Output image for {model_type} not found.")
 
 if __name__ == "__main__":
     # Run the FastAPI app with Uvicorn
