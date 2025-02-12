@@ -26,7 +26,7 @@ class TrainStatus(BaseModel):
 
 
 @app.post("/start_training/")
-async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yolo_v3", enum=["yolo_v3","pre_trained_yolo_v3"])):
+async def start_training(epochs: int = Query(1, ge=1), model_type: str = Query("yolo_v3", enum=["yolo_v3","pre_trained_yolo_v3"])):
     """
     Start the training of the YOLO v3 model.
     This will run the training in a separate thread to avoid blocking the API.
@@ -43,7 +43,7 @@ async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yo
             if model_type == "yolo_v3":
                 yolo_model.train_model(epochs)
             else:
-                pre_trained_yolo_model.train_model(epochs)
+                pre_trained_yolo_model.train_model()
             training_in_progress[model_type] = False
         except Exception as e:
             training_in_progress[model_type] = False
