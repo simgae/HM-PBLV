@@ -18,20 +18,6 @@ pretrained_yolo_model = FasterRCNNModel()
 # Global variable to keep track of the training status per model
 training_in_progress = {"yolo_v3": False, "pretrained_yolo_v3": False}
 
-def check_model_status(model):
-    try:
-        model.load_model()
-        return True
-    except:
-        return False
-
-# Global variable to track the readiness of models
-model_ready_status = {
-    "yolo_v3": check_model_status(yolo_model),        # False means model is not trained yet
-    "pretrained_yolo_v3": check_model_status(pretrained_yolo_model) # False means model is not trained yet
-}
-
-
 
 class TrainStatus(BaseModel):
     training: bool
@@ -58,7 +44,6 @@ async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yo
                 yolo_model.train_model(epochs)
             else:
                 pretrained_yolo_model.train_model(epochs)
-            model_ready_status[model_type] = True
             training_in_progress[model_type] = False
         except Exception as e:
             training_in_progress[model_type] = False
@@ -80,21 +65,34 @@ async def get_training_status(model_type: str = Query("yolo_v3", enum=["yolo_v3"
         return {"training": False, "epoch": None, "message": f"Training for {model_type} is not in progress."}
 
 @app.get("/model_status/")
-async def get_model_readiness():
+async def get_model_status():
     """
     Get whether each model is ready for use (i.e., has been trained in the past).
+    Returns the status of the YOLO and Pretrained YOLO models.
     """
-    model_readiness = {
-        "yolo_v3": {
-            "ready": model_ready_status["yolo_v3"],
-            "message": "Model is ready for use." if model_ready_status["yolo_v3"] else "Model is not yet trained."
-        },
-        "pretrained_yolo_v3": {
-            "ready": model_ready_status["pretrained_yolo_v3"],
-            "message": "Model is ready for use." if model_ready_status["pretrained_yolo_v3"] else "Model is not yet trained."
-        }
+    # Function for checking whether a model can be loaded
+    def check_model_status(model):
+        try:
+            model.load_model() # Try to load the model
+            return True
+        except:
+            return False
+
+    # Check status for each model
+    models = {
+        "yolo_v3": yolo_model,
+        "pretrained_yolo_v3": pretrained_yolo_model
     }
-    return model_readiness
+
+    model_status = {}
+
+    for model_name, model in models.items():
+        status = check_model_status(model)
+        model_status[model_name] = {
+            "ready": status,
+            "message": f"Model {model_name} is ready for use." if status else f"Model {model_name} is not yet trained."
+        }
+    return model_status
 
 @app.post("/evaluate_image/")
 async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("yolo_v3", enum=["yolo_v3", "pretrained_yolo_v3"])):
