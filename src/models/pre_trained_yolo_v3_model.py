@@ -35,23 +35,12 @@ class PreTrainedYoloV3Model:
 
     def train_model(self, epochs, fine_tuning=True):
         """
-        Load the pre-trained YOLO v3 model and fine-tune it on the KITTI dataset.
+        Load the pre-trained YOLO v3 model.
         :param fine_tuning: Boolean indicating whether to fine-tune the model on the KITTI dataset.
         """
         self.model = self.build_pre_trained_yolo_v3_model()
 
-        if fine_tuning:
-            # TODO: fine tune the model on the KITTI dataset
-            pass
-
         self._save_model()
-
-    def evaluate_model(self):
-        """
-        Evaluates the pre-trained YOLO v3 model's performance on the test dataset.
-        """
-        # TODO: Evaluate image on test dataset
-        pass
 
     def load_model(self, load_custom_model=False):
         """
