@@ -63,3 +63,7 @@ logs/
 *.png
 *.jpg
 *.jpeg
+
+
+# PyTorch files
+*.pth

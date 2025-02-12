@@ -288,7 +288,7 @@ class YoloV3Model:
         encoded_image = tf.image.encode_png(tf.image.convert_image_dtype(image, dtype=tf.uint8))
 
         # save image
-        tf.io.write_file('output.jpg', encoded_image)
+        tf.io.write_file('output_yolo_v3.jpg', encoded_image)
 
     def _save_model(self):
         """
