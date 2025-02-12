@@ -1,31 +1,65 @@
 import tensorflow as tf
 
-def handle_shape_mismatch(bboxes, max_bboxes=10):
-    """
-    Handle variable numbers of bounding boxes by padding or truncating to a fixed size.
-    """
-    bboxes = bboxes[:max_bboxes]  # Truncate to max_bboxes
-    padding = [[0, max_bboxes - tf.shape(bboxes)[0]], [0, 0]]  # Padding for bboxes
-    bboxes = tf.pad(bboxes, padding)
-    return bboxes
+def preprocess_dataset(data):
+    # load image, bounding boxes, and class labels from the input data
+    image = data['image']
+    bbox = data['objects']['bbox']
+    class_labels = data['objects']['type']
 
-def normalize_bboxes(bboxes, image_shape):
-    """
-    Normalize bounding box coordinates to be between 0 and 1.
-    """
-    height, width = image_shape[0], image_shape[1]
-    bboxes = tf.cast(bboxes, tf.float32)
-    bboxes = tf.stack([
-        bboxes[:, 0] / height,
-        bboxes[:, 1] / width,
-        bboxes[:, 2] / height,
-        bboxes[:, 3] / width
+    # Resize bounding boxes
+    if tf.size(bbox) == 0:
+        bbox = tf.zeros([0, 4])
+    else:
+        bbox = tf.reshape(bbox, [-1, 4])
+
+    # Denormalize bounding boxes
+    image_shape = tf.shape(image)
+    bbox = bbox * [image_shape[1], image_shape[0], image_shape[1], image_shape[0]]
+
+    # Calculate the center of bounding boxes
+    center_x = (bbox[:, 0] + bbox[:, 2]) / 2
+    center_y = (bbox[:, 1] + bbox[:, 3]) / 2
+
+    # Calculate the width and height of bounding boxes
+    width = bbox[:, 2] - bbox[:, 0]
+    height = bbox[:, 3] - bbox[:, 1]
+
+    # Normalize bounding boxes
+    bbox = tf.stack([
+        center_x / tf.cast(image_shape[1], tf.float32),
+        center_y / tf.cast(image_shape[0], tf.float32),
+        width / tf.cast(image_shape[1], tf.float32),
+        height / tf.cast(image_shape[0], tf.float32)
     ], axis=-1)
-    return bboxes
 
-def convert_bboxes_to_fixed_size_tensor(bboxes, max_bboxes=10):
-    """
-    Convert bounding boxes to a fixed size tensor.
-    """
-    bboxes = handle_shape_mismatch(bboxes, max_bboxes)
-    return bboxes
+    # Resize image to 416x416
+    image = tf.image.resize(image, (416, 416))
+
+    # Add One-hot encoding for class labels
+    class_labels = tf.one_hot(class_labels, depth=3)
+
+    # Add tensor for objectiveness
+    objectiveness = tf.ones((tf.shape(bbox)[0], 1))
+
+    # Concatenate class labels, bounding boxes, and objectiveness
+    bbox = tf.concat([bbox, objectiveness, class_labels], axis=-1)
+
+    # Ground truth tensor Shape = (batch_size, 13, 13, 3, 5 + num_classes)
+    # Tensor: (32, 13, 13, 3, bbox)
+    batch_size = 1
+    num_classes = 3
+    grid_size_large = 13
+    grid_size_medium = 26
+    grid_size_small = 52
+
+    y_true_large = tf.zeros((batch_size, grid_size_large, grid_size_large, 3, 5 + num_classes))
+    y_true_medium = tf.zeros((batch_size, grid_size_medium, grid_size_medium, 3, 5 + num_classes))
+    y_true_small = tf.zeros((batch_size, grid_size_small, grid_size_small, 3, 5 + num_classes))
+
+    # Insert bounding boxes into the ground truth tensors
+    for i in range(tf.shape(bbox)[0]):
+        y_true_large = tf.tensor_scatter_nd_update(y_true_large, [[0, 6, 6, 0]], [bbox[i]])
+        y_true_medium = tf.tensor_scatter_nd_update(y_true_medium, [[0, 13, 13, 0]], [bbox[i]])
+        y_true_small = tf.tensor_scatter_nd_update(y_true_small, [[0, 26, 26, 0]], [bbox[i]])
+
+    return image, (y_true_large, y_true_medium, y_true_small)

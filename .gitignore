@@ -58,3 +58,15 @@ logs/
 # Python
 .venv/
 .python-version
+
+# Images
+*.png
+*.jpg
+*.jpeg
+
+
+# PyTorch files
+*.pth
+
+# Exclude pretrained model
+src/models/pre-trained-yolo-model
