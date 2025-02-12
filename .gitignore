@@ -69,4 +69,5 @@ logs/
 *.pth
 
 # Exclude pretrained model
-src/models/pre-trained-yolo-model
+*.cfg
+*.weights
