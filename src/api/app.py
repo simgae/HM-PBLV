@@ -16,7 +16,22 @@ yolo_model = YoloV3Model()
 pretrained_yolo_model = FasterRCNNModel()
 
 # Global variable to keep track of the training status per model
-training_in_progress = {"yolo": False, "fasterrcnn": False}
+training_in_progress = {"yolo_v3": False, "pretrained_yolo_v3": False}
+
+def check_model_status(model):
+    try:
+        model.load_model()
+        return True
+    except:
+        return False
+
+# Global variable to track the readiness of models
+model_ready_status = {
+    "yolo_v3": check_model_status(yolo_model),        # False means model is not trained yet
+    "pretrained_yolo_v3": check_model_status(pretrained_yolo_model) # False means model is not trained yet
+}
+
+
 
 class TrainStatus(BaseModel):
     training: bool
@@ -25,7 +40,7 @@ class TrainStatus(BaseModel):
 
 
 @app.post("/start_training/")
-async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yolo_v3", enum=["yolo_v3","pretrained_yolo"])):
+async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yolo_v3", enum=["yolo_v3","pretrained_yolo_v3"])):
     """
     Start the training of the YOLO v3 model.
     This will run the training in a separate thread to avoid blocking the API.
@@ -39,10 +54,11 @@ async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yo
         global training_in_progress
         try:
             training_in_progress[model_type] = True
-            if model_type == "yolo":
+            if model_type == "yolo_v3":
                 yolo_model.train_model(epochs)
             else:
                 pretrained_yolo_model.train_model(epochs)
+            model_ready_status[model_type] = True
             training_in_progress[model_type] = False
         except Exception as e:
             training_in_progress[model_type] = False
@@ -54,7 +70,7 @@ async def start_training(epochs: int = Form(1, ge=1), model_type: str = Form("yo
 
 
 @app.get("/training_status/")
-async def get_training_status(model_type: str = Query("yolo_v3", enum=["yolo_v3", "pretrained_yolo"])):
+async def get_training_status(model_type: str = Query("yolo_v3", enum=["yolo_v3", "pretrained_yolo_v3"])):
     """
     Get the current status of the training process.
     """
@@ -63,9 +79,25 @@ async def get_training_status(model_type: str = Query("yolo_v3", enum=["yolo_v3"
     else:
         return {"training": False, "epoch": None, "message": f"Training for {model_type} is not in progress."}
 
+@app.get("/model_status/")
+async def get_model_readiness():
+    """
+    Get whether each model is ready for use (i.e., has been trained in the past).
+    """
+    model_readiness = {
+        "yolo_v3": {
+            "ready": model_ready_status["yolo_v3"],
+            "message": "Model is ready for use." if model_ready_status["yolo_v3"] else "Model is not yet trained."
+        },
+        "pretrained_yolo_v3": {
+            "ready": model_ready_status["pretrained_yolo_v3"],
+            "message": "Model is ready for use." if model_ready_status["pretrained_yolo_v3"] else "Model is not yet trained."
+        }
+    }
+    return model_readiness
 
 @app.post("/evaluate_image/")
-async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("yolo_v3", enum=["yolo_v3", "pretrained_yolo"])):
+async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("yolo_v3", enum=["yolo_v3", "pretrained_yolo_v3"])):
     """
     Evaluate a single image using the trained YOLO v3 model.
     """
@@ -74,7 +106,7 @@ async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("
     with open(image_path, "wb") as f:
         f.write(await image.read())
 
-    if model_type == "yolo":
+    if model_type == "yolo_v3":
         model = yolo_model
     else:
         model = pretrained_yolo_model
