@@ -15,10 +15,9 @@ class PreTrainedYoloV3Model:
         """
         return models.load_model('./models/pre-trained-yolo-model/yolov3.cfg', './models/pre-trained-yolo-model/yolov3.weights')
 
-    def train_model(self, fine_tuning=True):
+    def train_model(self):
         """
         Load the pre-trained YOLO v3 model.
-        :param fine_tuning: Boolean indicating whether to fine-tune the model on the KITTI dataset.
         """
         self.model = self.build_pre_trained_yolo_v3_model()
 
