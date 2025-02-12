@@ -71,3 +71,6 @@ logs/
 # Exclude pretrained model
 *.cfg
 *.weights
+
+# Exculde coco folder
+coco/
