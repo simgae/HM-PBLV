@@ -29,7 +29,7 @@ class PreTrainedYoloV3Model:
         :param load_custom_model: Boolean indicating whether to load a custom model or the pre-trained-one.
         """
         if not load_custom_model:
-            self.model = torch.load('./models/pre-trained-yolo-model/yolov3_ckpt_2.pth')
+            self.model = self.build_pre_trained_yolo_v3_model()
         else:
             self.model = torch.load('./pre_trained_yolo_v3_model.pth', weights_only=False)
 
