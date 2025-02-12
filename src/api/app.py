@@ -7,13 +7,13 @@ import os
 
 # Importiere die YOLO und Faster R-CNN Modelle
 from src.models.yolo_v3_model import YoloV3Model
-from src.models.faster_rcnn_model import FasterRCNNModel
+from src.models.pre_trained_yolo_v3_model import PreTrainedYoloV3Model
 
 app = FastAPI()
 
 # Create instances of the models
 yolo_model = YoloV3Model()
-pretrained_yolo_model = FasterRCNNModel()
+pretrained_yolo_model = PreTrainedYoloV3Model()
 
 # Global variable to keep track of the training status per model
 training_in_progress = {"yolo_v3": False, "pretrained_yolo_v3": False}
@@ -121,7 +121,7 @@ async def evaluate_image(image: UploadFile = File(...), model_type: str = Form("
         model.evaluate_image(image_path)
 
         # Save the output image in a specific directory
-        output_image_path = f"output_images/output_{model_type}.jpg"  # Model writes the image here
+        output_image_path = f"output_{model_type}.jpg"  # Model writes the image here
         os.makedirs(os.path.dirname(output_image_path), exist_ok=True)
         # Assuming `yolo_model.evaluate_image` saves the result to output.jpg
 
