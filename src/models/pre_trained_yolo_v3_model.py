@@ -1,28 +1,11 @@
-import tensorflow_datasets as tfds
 import cv2
 import torch
 from pytorchyolo import detect, models
-
-from src.utils import preprocess_dataset
-
 
 class PreTrainedYoloV3Model:
 
     def __init__(self):
         self.model = None
-        self.num_classes = 3
-        self.image_shape = (416, 416, 3)
-
-        # Load the KITTI dataset
-        self.train_dataset = tfds.load('kitti', split='train')
-        self.val_dataset = tfds.load('kitti', split='validation')
-        self.test_dataset = tfds.load('kitti', split='test')
-
-        # Preprocess the validation and test datasets
-        self.train_dataset = self.train_dataset.map(preprocess_dataset).batch(32)
-        self.val_dataset = self.val_dataset.map(preprocess_dataset).batch(32)
-        self.test_dataset = self.test_dataset.map(preprocess_dataset).batch(32)
-
 
     @staticmethod
     def build_pre_trained_yolo_v3_model():
