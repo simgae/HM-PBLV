@@ -79,7 +79,11 @@ class PreTrainedYoloV3Model:
             cv2.rectangle(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (0, 255, 0), 2)
 
             # add label to image
-            cv2.putText(img, f'{box[4]:.2f}', (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            label = box[5]
+            if 2.1 >= label >= -2.1:
+                cv2.putText(img, 'Car', (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            else:
+                cv2.putText(img, str(label), (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         # save image as output_pre_trained_yolo_v3.jpg
         cv2.imwrite('output_pre_trained_yolo_v3.jpg', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
