@@ -1,5 +1,4 @@
 import tensorflow_datasets as tfds
-import tensorflow as tf
 import cv2
 import torch
 from pytorchyolo import detect, models
