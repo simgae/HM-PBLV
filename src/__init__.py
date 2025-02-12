@@ -3,7 +3,7 @@ from src.models.yolo_v3_model import YoloV3Model
 
 if __name__ == '__main__':
     yolo_v3_model = PreTrainedYoloV3Model()
-    yolo_v3_model.train_model(2, False)
+    yolo_v3_model.train_model(False)
     yolo_v3_model.load_model(True)
     # yolo_v3_model.evaluate_model()
 

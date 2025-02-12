@@ -31,9 +31,9 @@ class PreTrainedYoloV3Model:
         Build pre-trained yolo model from configuration files.
         :return: pre-trained yolo model
         """
-        return models.load_model('./models/pre-trained-yolo-model/yolov3-tiny.cfg', './models/pre-trained-yolo-model/yolov3-tiny.weights')
+        return models.load_model('./models/pre-trained-yolo-model/yolov3.cfg', './models/pre-trained-yolo-model/yolov3.weights')
 
-    def train_model(self, epochs, fine_tuning=True):
+    def train_model(self, fine_tuning=True):
         """
         Load the pre-trained YOLO v3 model.
         :param fine_tuning: Boolean indicating whether to fine-tune the model on the KITTI dataset.
@@ -59,7 +59,7 @@ class PreTrainedYoloV3Model:
         """
         img = cv2.imread(image_path)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        boxes = detect.detect_image(self.model, img, conf_thres=0.2, nms_thres=0.5)
+        boxes = detect.detect_image(self.model, img, conf_thres=0.5, nms_thres=0.5)
 
         # format of boxes [[x1, y1, x2, y2, conf, cls], ...]
         # add bboxes to image
@@ -70,9 +70,9 @@ class PreTrainedYoloV3Model:
             # add label to image
             label = box[5]
             if 2.1 >= label >= -2.1:
-                cv2.putText(img, 'Car', (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv2.putText(img, 'Car ' + f'{box[4]:.2f}', (int(box[0] - 0.0002), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
             else:
-                cv2.putText(img, str(label), (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+                cv2.putText(img, str(label) + f'{box[4]:.2f}', (int(box[0]), int(box[1])), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
 
         # save image as output_pre_trained_yolo_v3.jpg
         cv2.imwrite('output_pre_trained_yolo_v3.jpg', cv2.cvtColor(img, cv2.COLOR_RGB2BGR))

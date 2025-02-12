@@ -67,3 +67,6 @@ logs/
 
 # PyTorch files
 *.pth
+
+# Exclude pretrained model
+src/models/pre-trained-yolo-model
