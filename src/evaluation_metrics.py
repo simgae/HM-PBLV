@@ -214,8 +214,8 @@ def evaluate_on_coco(model, images_dir, annotation_file, iou_threshold=0.5, conf
 # --- Main Script ---
 if __name__ == '__main__':
     # Update these paths with the actual locations of your YOLO configuration and weights.
-    config_path = "./config/yolov3.cfg"
-    weights_path = "./weights/yolov3.weights"
+    config_path = "./models/pre_trained_yolo_v3_model/XXX.cfg"
+    weights_path = "./models/pre_trained_yolo_v3_model/XXX.weights"
 
     print("Loading YOLO model...")
     model = models.load_model(config_path, weights_path)
